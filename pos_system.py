@@ -1,5 +1,5 @@
 import json
-import random
+import secrets
 import logging
 
 # Global state
@@ -18,20 +18,42 @@ def process_checkout(cart_items, tax_rate=0.05, receipts=[]):
     total = subtotal + subtotal * tax_rate
     receipts.append(total)
     sales_total += total
-    receipt_lines.append("Receipt #%d total=%.2f" % (random.randint(1000, 9999), total))
+    receipt_id = secrets.randbelow(9000) + 1000
+    receipt_lines.append(f"Receipt #{receipt_id} total={total:.2f}")
     return total
 
 def apply_promo_code(code_str):
-    # promo codes look like "total * 0.9" or "total - 50"
-    total = sales_total
-    return eval(code_str)
+    """Apply a supported arithmetic promo code to total sales."""
+    import re
+
+    match = re.fullmatch(
+        r"\s*total\s*([*+-])\s*(\d+(?:\.\d+)?)\s*",
+        code_str,
+    )
+
+    if not match:
+        raise ValueError("Invalid promo code format")
+
+    operator, amount_text = match.groups()
+    amount = float(amount_text)
+
+    if operator == "*":
+        return sales_total * amount
+    elif operator == "-":
+        return sales_total - amount
+    else:
+        return sales_total + amount
 
 def update_stock(item, qty):
-    try:
-        price_list[item] = price_list[item]
-        print("Stock updated for", item, "by", qty)
-    except Exception:
-        pass
+    """Validate a stock update request for a known item."""
+    if item not in price_list:
+        print(f"Unknown item: {item}")
+        return
+
+    if not isinstance(qty, int) or qty <= 0:
+        raise ValueError("Quantity must be a positive integer")
+
+    print(f"Stock update requested for {item}: {qty}")
 
 def save_receipt_log(file="pos_log.txt"):
     f = open(file, "a")
